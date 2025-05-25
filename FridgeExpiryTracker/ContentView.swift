@@ -8,17 +8,101 @@
 import SwiftUI
 
 struct ContentView: View {
+    // State variable to manage app behavior
+    @AppStorage("savedItems") private var savedData: Data = Data() // Local Storage
+    @State private var items: [FoodItem] = []
+    
+    
+    @State private var newName = ""
+    @State private var newDate = Date()
+    @State private var FoodListTitle = ""
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+    
+        NavigationView {
+            VStack {
+                // Input form to add new food item
+                Form {
+                    Section(header: Text("Add Food Item")) {
+                        TextField("Food Name", text: $newName)
+                        DatePicker("ExpiryDate", selection: $newDate, displayedComponents: .date)
+                        
+                        Button("Add Item") {
+                           addItem()
+                        }.disabled(newName.isEmpty)
+                    }
+                }
+                
+                
+                // To Display list of food items added
+                Text(containsItems() == true ? "Food Item" : "")
+                List {
+                    ForEach(sortedItems()) { item in
+                        VStack(alignment: .leading) {
+                            Text(item.name)
+                                .fontWeight(.bold)
+                            Text("Expires: \(item.expiryDate, formatter: dateFormatter)").foregroundStyle(item.expiryDate < Date() ? .red : .secondary)
+                        }
+                    }
+                    .onDelete(perform: deleteItem)
+                }
+            }
+            .navigationTitle("Fridge Food Tracker")
+            .onAppear(perform: loadItems)
+
+
         }
-        .padding()
+    }
+    
+    
+    // Functions
+    func sortedItems() -> [FoodItem] {
+        items.sorted { $0.expiryDate < $1.expiryDate }
+    }
+    
+    // Add a new item to the list and save it
+    func addItem() {
+        let newItem = FoodItem(name: newName, expiryDate: newDate)
+        items.append(newItem)
+        newName = ""
+        newDate = Date()
+        saveItems()
+    }
+    
+    func deleteItem(at offsets: IndexSet) {
+        items.remove(atOffsets: offsets)
+        saveItems()
+    }
+    
+    func saveItems() {
+        if let encoded = try? JSONEncoder().encode(items) {
+            savedData = encoded
+        }
+    }
+    
+    func loadItems() {
+        if let decoded = try? JSONDecoder().decode([FoodItem].self, from: savedData) {
+            items = decoded
+        }
+    }
+    
+    func containsItems() -> Bool {
+        if items.isEmpty {
+            return false
+        }
+        return true
+    }
+    
+    private var dateFormatter: DateFormatter {
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        return df
     }
 }
+
 
 #Preview {
     ContentView()
 }
+
+
